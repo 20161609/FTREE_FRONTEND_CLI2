@@ -2,7 +2,7 @@ from libs.santizer import format_cost
 from prettytable import PrettyTable
 import getpass
 import tkinter as tk
-from api.auth import api_signin, api_signup
+from api.auth import api_change_password, api_signin, api_signup
 from api.auth import api_send_verify_email
 from api.auth import api_possible_signup
 from api.branch import api_mkdir, api_rmdir
@@ -69,6 +69,9 @@ class Shell:
                         self.refer_monthly()
                 elif list_cmd[0] == 'rmdir':
                     self.rmdir(list_cmd[1])
+                elif list_cmd[0] in ['change', 'ch']:
+                    if list_cmd[1] in ['password','pw']:
+                        self.change_password()
         except Exception as e:
             error_message = f'on fetch, \n{e}'
             print('...[ERROR]:', error_message)
@@ -151,6 +154,9 @@ class Shell:
         
         # Get User Info
         user_info = res['message']
+        print(user_info)
+        print('Successfully signed in')
+        return
         self.id_token = user_info['id_token']
         self.email = user_info['email']
         self.name = user_info['name']
@@ -166,6 +172,30 @@ class Shell:
             self.mode = 'Editor'
         else:
             self.mode = 'Viewer'
+
+    def change_password(self):
+        # Check Token
+        if self.id_token == None:
+            print("...[ERROR] You need to log in first.")
+            return
+        
+        # Get New Password
+        new_pw = input('...[INPUT] Enter the new password: ')
+        
+        # Send Verification Email
+        res_sendemail = api_send_verify_email(self.email)
+        if res_sendemail['status'] == False:
+            print("...[ERROR]", res_sendemail['message'])
+            return
+        print("...[INFO] Verification code has been sent to your email.")
+        code = input('...[INPUT] Enter the verification code: ')
+
+        # Change Password
+        res_change = api_change_password(self.email, new_pw, code, self.id_token)
+        if res_change['status'] == False:
+            print("...[ERROR]", res_change['message'])
+            return
+        print("...[SUCCESS]", res_change['message'])
 
     # Branch
     def list_branch(self):
